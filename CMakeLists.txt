@@ -3,4 +3,4 @@ project(VanEditor)
 
 set(CMAKE_C_STANDARD 11)
 
-add_executable(Editor main.c)
+add_executable(VanEditor main.c)
