@@ -1,11 +1,15 @@
 /*** includes ***/
 
-#include <ctype.h>
+#define _DEFAULT_SOURCE
+#define _BSD_SOURCE
+#define _GNU_SOURCE
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/types.h>
 #include <termios.h>
 #include <unistd.h>
 
@@ -15,6 +19,7 @@ typedef struct termios termios;
 
 #define CTRL_KEY(k) ((k) & 0x1f)
 #define VanEditor_VERSION "0.0.1"
+#define KILO_TAB_STOP 4
 
 enum EditorKey {    //特殊按键Index
     ARROW_LEFT = 1000,
@@ -30,12 +35,29 @@ enum EditorKey {    //特殊按键Index
 
 /*** data ***/
 
+typedef struct erow {
+    //行文本数据
+    int size;
+    char *chars;
+
+    //渲染文本数据
+    int rsize;
+    char *render;
+} erow;
+
 typedef struct editorConfig {
     int cx, cy;  //光标位置
+    int rx;
+    int rowoff;
+    int coloff;
 
     //窗口大小
     int screen_rows;
     int screen_cols;
+
+    //文本数据
+    int num_rows;    //行数
+    erow *row;       //文本信息
 
     termios orig_termios;
 } editorConfig;
@@ -115,6 +137,73 @@ int GetWindowSize(int *rows, int *cols) {
         return 0;
     }
 }
+
+/*** row operations ***/
+
+int EditorRowCxToRx(erow *row, int cx) {
+    int rx = 0;
+    for (int j = 0; j < cx; j++) {
+        if (row->chars[j] == '\t')
+            rx += (KILO_TAB_STOP - 1) - (rx % KILO_TAB_STOP);
+        rx++;
+    }
+    return rx;
+}
+
+void EditorUpdateRow(erow *row) {//渲染字符
+    int tab_nums = 0;
+    for (int j = 0; j < row->size; j++) {
+        if (row->chars[j] == '\t') tab_nums++;
+    }
+
+    free(row->render);
+    row->render = malloc(row->rsize + tab_nums * (KILO_TAB_STOP - 1) + 1);
+
+    int index = 0;
+    for (int j = 0; j < row->size; j++) {
+        if (row->chars[j] == '\t') {
+            row->render[index++] = ' ';
+            while (index % KILO_TAB_STOP != 0)
+                row->render[index++] = ' ';
+        } else {
+            row->render[index++] = row->chars[j];
+        }
+    }
+    row->render[index] = '\0';
+    row->rsize = index;
+}
+
+void EditorAppendRow(char *s, size_t len) {//读取字符,写入E.row
+    E.row = realloc(E.row, sizeof(erow) * (E.num_rows + 1));
+    int at = E.num_rows;
+    E.row[at].size = len;
+    E.row[at].chars = malloc(len + 1);
+    memcpy(E.row[at].chars, s, len);
+    E.row[at].chars[len] = '\0';
+    E.row[at].rsize = 0;
+    E.row[at].render = NULL;
+    EditorUpdateRow(&E.row[at]);
+    E.num_rows++;
+}
+
+/*** file i/o ***/
+
+void EditorOpen(char *filename) {//读取文件内容
+    FILE *fp = fopen(filename, "r");
+    if (!fp) die("fopen");
+    char *line = NULL;
+    size_t linecap = 0;
+    ssize_t linelen;
+    while ((linelen = getline(&line, &linecap, fp)) != -1) {
+        while (linelen > 0 && (line[linelen - 1] == '\n' ||
+                               line[linelen - 1] == '\r'))
+            linelen--;
+        EditorAppendRow(line, linelen);
+    }
+    free(line);
+    fclose(fp);
+}
+
 
 /*** append buffer ***/
 
@@ -221,15 +310,23 @@ int EditorReadKey() {
  * @param key:int -> enum EditorKey
  */
 void EditorMoveCursor(int key) {
+    erow *row = (E.cy >= E.num_rows) ? NULL : &E.row[E.cy];
+
     switch (key) {
         case ARROW_LEFT:
             if (E.cx != 0) {
                 E.cx--;
+            } else if (E.cy > 0) {
+                E.cy--;
+                E.cx = E.row[E.cy].size;
             }
             break;
         case ARROW_RIGHT:
-            if (E.cx != E.screen_cols - 1) {
+            if (row && E.cx < row->size) {
                 E.cx++;
+            } else if (row && E.cx == row->size) {
+                E.cy++;
+                E.cx = 0;
             }
             break;
         case ARROW_UP:
@@ -238,10 +335,16 @@ void EditorMoveCursor(int key) {
             }
             break;
         case ARROW_DOWN:
-            if (E.cy != E.screen_rows - 1) {
+            if (E.cy < E.num_rows) {
                 E.cy++;
             }
             break;
+    }
+
+    row = (E.cy >= E.num_rows) ? NULL : &E.row[E.cy];
+    int rowlen = row ? row->size : 0;
+    if (E.cx > rowlen) {
+        E.cx = rowlen;
     }
 }
 
@@ -265,11 +368,19 @@ void EditorProcessKeys() {
             E.cx = 0;
             break;
         case END_KEY:
-            E.cx = E.screen_cols - 1;
+            if (E.cy < E.num_rows)
+                E.cx = E.row[E.cy].size;
             break;
 
         case PAGE_UP:
         case PAGE_DOWN: {
+            if (c == PAGE_UP) {
+                E.cy = E.rowoff;
+            } else if (c == PAGE_DOWN) {
+                E.cy = E.rowoff + E.screen_rows - 1;
+                if (E.cy > E.num_rows) E.cy = E.num_rows;
+            }
+
             int times = E.screen_rows;
             while (times--)
                 EditorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
@@ -292,20 +403,28 @@ void EditorProcessKeys() {
  */
 void EditorDrawRows(abuf *ab) {
     for (int y = 0; y < E.screen_rows; y++) {
-        if (y == E.screen_rows / 3) {
-            char welcome[80];
-            int welcomelen = snprintf(welcome, sizeof(welcome),
-                                      "Van Editor -- version %s", VanEditor_VERSION);
-            if (welcomelen > E.screen_cols) welcomelen = E.screen_cols;
-            int padding = (E.screen_cols - welcomelen) / 2;
-            if (padding) {
+        int filerow = E.rowoff + y;
+        if (filerow >= E.num_rows) {
+            if (E.num_rows == 0 && y == E.screen_rows / 3) {
+                char welcome[80];
+                int welcomelen = snprintf(welcome, sizeof(welcome),
+                                          "Van Editor -- version %s", VanEditor_VERSION);
+                if (welcomelen > E.screen_cols) welcomelen = E.screen_cols;
+                int padding = (E.screen_cols - welcomelen) / 2;
+                if (padding) {
+                    abAppend(ab, "~", 1);
+                    padding--;
+                }
+                while (padding--) abAppend(ab, " ", 1);
+                abAppend(ab, welcome, welcomelen);
+            } else {
                 abAppend(ab, "~", 1);
-                padding--;
             }
-            while (padding--) abAppend(ab, " ", 1);
-            abAppend(ab, welcome, welcomelen);
         } else {
-            abAppend(ab, "~", 1);
+            int len = E.row[filerow].rsize - E.coloff;
+            if (len < 0) len = 0;
+            if (len > E.screen_cols) len = E.screen_cols;
+            abAppend(ab, &E.row[filerow].render[E.coloff], len);
         }
         abAppend(ab, "\x1b[K", 3);
         if (y < E.screen_rows - 1) {
@@ -315,16 +434,42 @@ void EditorDrawRows(abuf *ab) {
 }
 
 /**
+ * 检查光标是否移出可见窗口
+ * 如果是，调整 E.rowoff 使光标刚好在可见窗口内
+ */
+void EditorScroll() {
+    E.rx = 0;
+    if (E.cy < E.num_rows) {
+        E.rx = EditorRowCxToRx(&E.row[E.cy], E.cx);
+    }
+
+    if (E.cy < E.rowoff) {
+        E.rowoff = E.cy;
+    }
+    if (E.cy >= E.rowoff + E.screen_rows) {
+        E.rowoff = E.cy - E.screen_rows + 1;
+    }
+    if (E.rx < E.coloff) {
+        E.coloff = E.rx;
+    }
+    if (E.rx >= E.coloff + E.screen_cols) {
+        E.coloff = E.rx - E.screen_cols + 1;
+    }
+}
+
+/**
  * 清除屏幕,并将光标移动到屏幕左上角
  */
 void EditorRefreshScreen() {
+    EditorScroll();
+
     abuf ab = ABUF_INIT;
     abAppend(&ab, "\x1b[?25l", 6);
     abAppend(&ab, "\x1b[H", 3);
     EditorDrawRows(&ab);
 
     char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", E.cy + 1, E.cx + 1);
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1);
     abAppend(&ab, buf, strlen(buf));
 
     abAppend(&ab, "\x1b[?25h", 6);
@@ -337,12 +482,20 @@ void EditorRefreshScreen() {
 void InitEditor() {
     E.cx = 0;
     E.cy = 0;
+    E.rx = 0;
+    E.num_rows = 0;
+    E.rowoff = 0;
+    E.coloff = 0;
+    E.row = NULL;
     if (GetWindowSize(&E.screen_rows, &E.screen_cols) == -1) die("getWindowSize");
 }
 
-int main() {
+int main(int argc, char *argv[]) {
     EnableRawMode();
     InitEditor();
+    if (argc >= 2) {
+        EditorOpen(argv[1]);
+    }
 
     while (1) {
         EditorRefreshScreen();
