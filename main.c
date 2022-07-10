@@ -152,19 +152,15 @@ int EditorRowCxToRx(erow *row, int cx) {
 
 void EditorUpdateRow(erow *row) {//渲染字符
     int tab_nums = 0;
-    for (int j = 0; j < row->size; j++) {
+    for (int j = 0; j < row->size; j++)
         if (row->chars[j] == '\t') tab_nums++;
-    }
-
     free(row->render);
-    row->render = malloc(row->rsize + tab_nums * (KILO_TAB_STOP - 1) + 1);
-
+    row->render = malloc(row->size + tab_nums * (KILO_TAB_STOP - 1) + 1);
     int index = 0;
     for (int j = 0; j < row->size; j++) {
         if (row->chars[j] == '\t') {
             row->render[index++] = ' ';
-            while (index % KILO_TAB_STOP != 0)
-                row->render[index++] = ' ';
+            while (index % KILO_TAB_STOP != 0) row->render[index++] = ' ';
         } else {
             row->render[index++] = row->chars[j];
         }
@@ -173,7 +169,7 @@ void EditorUpdateRow(erow *row) {//渲染字符
     row->rsize = index;
 }
 
-void EditorAppendRow(char *s, size_t len) {//读取字符,写入E.row
+void EditorAppendRow(char *s, int len) {//读取字符,写入E.row
     E.row = realloc(E.row, sizeof(erow) * (E.num_rows + 1));
     int at = E.num_rows;
     E.row[at].size = len;
@@ -259,44 +255,44 @@ int EditorReadKey() {
                 if (read(STDIN_FILENO, &seq[2], 1) != 1) return '\x1b';
                 if (seq[2] == '~') {
                     switch (seq[1]) {
-                        case '1':
-                            return HOME_KEY;
-                        case '3':
-                            return DEL_KEY;
-                        case '4':
-                            return END_KEY;
-                        case '5':
-                            return PAGE_UP;
-                        case '6':
-                            return PAGE_DOWN;
-                        case '7':
-                            return HOME_KEY;
-                        case '8':
-                            return END_KEY;
+                    case '1':
+                        return HOME_KEY;
+                    case '3':
+                        return DEL_KEY;
+                    case '4':
+                        return END_KEY;
+                    case '5':
+                        return PAGE_UP;
+                    case '6':
+                        return PAGE_DOWN;
+                    case '7':
+                        return HOME_KEY;
+                    case '8':
+                        return END_KEY;
                     }
                 }
             } else {
                 switch (seq[1]) {
-                    case 'A':
-                        return ARROW_UP;
-                    case 'B':
-                        return ARROW_DOWN;
-                    case 'C':
-                        return ARROW_RIGHT;
-                    case 'D':
-                        return ARROW_LEFT;
-                    case 'H':
-                        return HOME_KEY;
-                    case 'F':
-                        return END_KEY;
-                }
-            }
-        } else if (seq[0] == 'O') {
-            switch (seq[1]) {
+                case 'A':
+                    return ARROW_UP;
+                case 'B':
+                    return ARROW_DOWN;
+                case 'C':
+                    return ARROW_RIGHT;
+                case 'D':
+                    return ARROW_LEFT;
                 case 'H':
                     return HOME_KEY;
                 case 'F':
                     return END_KEY;
+                }
+            }
+        } else if (seq[0] == 'O') {
+            switch (seq[1]) {
+            case 'H':
+                return HOME_KEY;
+            case 'F':
+                return END_KEY;
             }
         }
         return '\x1b';
@@ -313,32 +309,32 @@ void EditorMoveCursor(int key) {
     erow *row = (E.cy >= E.num_rows) ? NULL : &E.row[E.cy];
 
     switch (key) {
-        case ARROW_LEFT:
-            if (E.cx != 0) {
-                E.cx--;
-            } else if (E.cy > 0) {
-                E.cy--;
-                E.cx = E.row[E.cy].size;
-            }
-            break;
-        case ARROW_RIGHT:
-            if (row && E.cx < row->size) {
-                E.cx++;
-            } else if (row && E.cx == row->size) {
-                E.cy++;
-                E.cx = 0;
-            }
-            break;
-        case ARROW_UP:
-            if (E.cy != 0) {
-                E.cy--;
-            }
-            break;
-        case ARROW_DOWN:
-            if (E.cy < E.num_rows) {
-                E.cy++;
-            }
-            break;
+    case ARROW_LEFT:
+        if (E.cx != 0) {
+            E.cx--;
+        } else if (E.cy > 0) {
+            E.cy--;
+            E.cx = E.row[E.cy].size;
+        }
+        break;
+    case ARROW_RIGHT:
+        if (row && E.cx < row->size) {
+            E.cx++;
+        } else if (row && E.cx == row->size) {
+            E.cy++;
+            E.cx = 0;
+        }
+        break;
+    case ARROW_UP:
+        if (E.cy != 0) {
+            E.cy--;
+        }
+        break;
+    case ARROW_DOWN:
+        if (E.cy < E.num_rows) {
+            E.cy++;
+        }
+        break;
     }
 
     row = (E.cy >= E.num_rows) ? NULL : &E.row[E.cy];
@@ -356,43 +352,43 @@ void EditorMoveCursor(int key) {
 void EditorProcessKeys() {
     int c = EditorReadKey();
     switch (c) {
-        //CTRL+q
-        case CTRL_KEY('q'):
-            //退出前清屏
-            write(STDOUT_FILENO, "\x1b[2J", 4);
-            write(STDOUT_FILENO, "\x1b[H", 3);
-            exit(0);
-            break;
+    //CTRL+q
+    case CTRL_KEY('q'):
+        //退出前清屏
+        write(STDOUT_FILENO, "\x1b[2J", 4);
+        write(STDOUT_FILENO, "\x1b[H", 3);
+        exit(0);
+        break;
 
-        case HOME_KEY:
-            E.cx = 0;
-            break;
-        case END_KEY:
-            if (E.cy < E.num_rows)
-                E.cx = E.row[E.cy].size;
-            break;
+    case HOME_KEY:
+        E.cx = 0;
+        break;
+    case END_KEY:
+        if (E.cy < E.num_rows)
+            E.cx = E.row[E.cy].size;
+        break;
 
-        case PAGE_UP:
-        case PAGE_DOWN: {
-            if (c == PAGE_UP) {
-                E.cy = E.rowoff;
-            } else if (c == PAGE_DOWN) {
-                E.cy = E.rowoff + E.screen_rows - 1;
-                if (E.cy > E.num_rows) E.cy = E.num_rows;
-            }
-
-            int times = E.screen_rows;
-            while (times--)
-                EditorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+    case PAGE_UP:
+    case PAGE_DOWN: {
+        if (c == PAGE_UP) {
+            E.cy = E.rowoff;
+        } else if (c == PAGE_DOWN) {
+            E.cy = E.rowoff + E.screen_rows - 1;
+            if (E.cy > E.num_rows) E.cy = E.num_rows;
         }
-            break;
 
-        case ARROW_UP:
-        case ARROW_DOWN:
-        case ARROW_LEFT:
-        case ARROW_RIGHT:
-            EditorMoveCursor(c);
-            break;
+        int times = E.screen_rows;
+        while (times--)
+            EditorMoveCursor(c == PAGE_UP ? ARROW_UP : ARROW_DOWN);
+    }
+    break;
+
+    case ARROW_UP:
+    case ARROW_DOWN:
+    case ARROW_LEFT:
+    case ARROW_RIGHT:
+        EditorMoveCursor(c);
+        break;
     }
 }
 
@@ -457,6 +453,16 @@ void EditorScroll() {
     }
 }
 
+void EditorDrawStatusBar(struct abuf *ab) {
+    abAppend(ab, "\x1b[7m", 4);
+    int len = 0;
+    while (len < E.screen_cols) {
+        abAppend(ab, " ", 1);
+        len++;
+    }
+    abAppend(ab, "\x1b[m", 3);
+}
+
 /**
  * 清除屏幕,并将光标移动到屏幕左上角
  */
@@ -466,7 +472,9 @@ void EditorRefreshScreen() {
     abuf ab = ABUF_INIT;
     abAppend(&ab, "\x1b[?25l", 6);
     abAppend(&ab, "\x1b[H", 3);
+
     EditorDrawRows(&ab);
+    //EditorDrawStatusBar(&ab);
 
     char buf[32];
     snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1);
@@ -487,7 +495,9 @@ void InitEditor() {
     E.rowoff = 0;
     E.coloff = 0;
     E.row = NULL;
-    if (GetWindowSize(&E.screen_rows, &E.screen_cols) == -1) die("getWindowSize");
+    if (GetWindowSize(&E.screen_rows, &E.screen_cols) == -1)
+        die("getWindowSize");
+    //E.screen_rows -= 1;
 }
 
 int main(int argc, char *argv[]) {
