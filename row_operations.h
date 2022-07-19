@@ -1,6 +1,4 @@
-//
-// Created by 14825 on 2022/7/14.
-//
+
 
 #ifndef VANEDITOR_ROW_OPERATIONS_H
 #define VANEDITOR_ROW_OPERATIONS_H

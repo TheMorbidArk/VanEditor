@@ -1,6 +1,4 @@
-//
-// Created by 14825 on 2022/7/14.
-//
+
 
 #ifndef VANEDITOR_FILE_H
 #define VANEDITOR_FILE_H

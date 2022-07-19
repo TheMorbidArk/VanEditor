@@ -1,6 +1,4 @@
-//
-// Created by 14825 on 2022/7/14.
-//
+
 
 #ifndef VANEDITOR_APPEND_BUFFER_H
 #define VANEDITOR_APPEND_BUFFER_H
