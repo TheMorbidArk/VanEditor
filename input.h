@@ -8,7 +8,14 @@
 
 
 /*** input ***/
+/* 处理输入相关事件 */
 
+/**
+ * 在status bar输入新建文件名
+ * 当使用VanEditor时不输入文件名参数且修改文件并保存时，状态栏会提示填写保存文件的文件名
+ * @param prompt:char* -> 提示信息:"Save as: %s (ESC to cancel)" 
+ * @return buf:char* -> file name
+ */
 char *EditorPrompt(char *prompt) {
     size_t bufsize = 128;
     char *buf = malloc(bufsize);

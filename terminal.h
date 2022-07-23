@@ -4,6 +4,7 @@
 #include "VanEditor.h"
 
 /*** terminal ***/
+/* 设置终端环境 */
 
 /**
  * 输出错误信息并结束进程

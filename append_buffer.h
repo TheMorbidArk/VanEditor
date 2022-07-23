@@ -4,6 +4,7 @@
 #define VANEDITOR_APPEND_BUFFER_H
 
 /*** append buffer ***/
+/* 字符串缓冲区 */
 
 typedef struct abuf {
     char *b;

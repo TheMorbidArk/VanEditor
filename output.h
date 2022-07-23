@@ -7,9 +7,12 @@
 #include "row_operations.h"
 
 /*** output ***/
+/* 处理输出相关事件 */
+
+/** Editor **/
 
 /**
- * 绘制 ~ 和版本信息
+ * 绘制 ~ / 版本信息 / 文本数据
  */
 void EditorDrawRows(abuf *ab) {
     for (int y = 0; y < E.screen_rows; y++) {
@@ -67,6 +70,31 @@ void EditorScroll() {
     }
 }
 
+/**
+ * 清除屏幕,并将光标移动到屏幕左上角
+ */
+void EditorRefreshScreen() {
+    EditorScroll();
+
+    abuf ab = ABUF_INIT;
+    abAppend(&ab, "\x1b[?25l", 6);
+    abAppend(&ab, "\x1b[H", 3);
+
+    EditorDrawRows(&ab);
+    EditorDrawStatusBar(&ab);
+    EditorDrawMessageBar(&ab);
+
+    char buf[32];
+    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1);
+    abAppend(&ab, buf, strlen(buf));
+
+    abAppend(&ab, "\x1b[?25h", 6);
+    write(STDOUT_FILENO, ab.b, ab.len);
+    abFree(&ab);
+}
+
+/** Status Bar **/
+
 void EditorDrawStatusBar(struct abuf *ab) {
     abAppend(ab, "\x1b[7m", 4);
 
@@ -97,7 +125,6 @@ void EditorDrawMessageBar(struct abuf *ab) {
     abAppend(ab, "\x1b[K", 3);
     int msglen = strlen(E.statusmsg);
     if (msglen > E.screen_cols) msglen = E.screen_cols;
-    //if (msglen && time(NULL) - E.statusmsg_time < 5)
     abAppend(ab, E.statusmsg, msglen);
 }
 
@@ -108,29 +135,5 @@ void EditorSetStatusMessage(const char *fmt, ...) {
     va_end(ap);
     E.statusmsg_time = time(NULL);
 }
-
-/**
- * 清除屏幕,并将光标移动到屏幕左上角
- */
-void EditorRefreshScreen() {
-    EditorScroll();
-
-    abuf ab = ABUF_INIT;
-    abAppend(&ab, "\x1b[?25l", 6);
-    abAppend(&ab, "\x1b[H", 3);
-
-    EditorDrawRows(&ab);
-    EditorDrawStatusBar(&ab);
-    EditorDrawMessageBar(&ab);
-
-    char buf[32];
-    snprintf(buf, sizeof(buf), "\x1b[%d;%dH", (E.cy - E.rowoff) + 1, (E.rx - E.coloff) + 1);
-    abAppend(&ab, buf, strlen(buf));
-
-    abAppend(&ab, "\x1b[?25h", 6);
-    write(STDOUT_FILENO, ab.b, ab.len);
-    abFree(&ab);
-}
-
 
 #endif //VANEDITOR_OUTPUT_H
