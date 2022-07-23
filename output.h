@@ -12,7 +12,7 @@
 /** Editor **/
 
 /**
- * 绘制 ~ / 版本信息 / 文本数据
+ * 绘制 ~ & 版本信息 & 文本数据
  */
 void EditorDrawRows(abuf *ab) {
     for (int y = 0; y < E.screen_rows; y++) {
@@ -95,9 +95,15 @@ void EditorRefreshScreen() {
 
 /** Status Bar **/
 
+/**
+ * 绘制状态栏
+ * @param ab:struct abuf* -> 字符缓冲区
+ */
 void EditorDrawStatusBar(struct abuf *ab) {
+	//使该行颜色反转
     abAppend(ab, "\x1b[7m", 4);
-
+	
+	//将状态栏信息输入到缓冲区ab中
     char status[80], rstatus[80];
     int len = snprintf(status, sizeof(status), "%.20s - %d lines %s",
                        E.file_name ? E.file_name : "[No Name]", E.num_rows,
@@ -117,10 +123,17 @@ void EditorDrawStatusBar(struct abuf *ab) {
             len++;
         }
     }
+    
+    //空出下一行并使其颜色恢复正常
     abAppend(ab, "\x1b[m", 3);
     abAppend(ab, "\r\n", 2);
 }
 
+
+/**
+ * 绘制状态栏下的消息栏
+ * @param ab:struct abuf* -> 字符缓冲区
+ */
 void EditorDrawMessageBar(struct abuf *ab) {
     abAppend(ab, "\x1b[K", 3);
     int msglen = strlen(E.statusmsg);
@@ -128,6 +141,10 @@ void EditorDrawMessageBar(struct abuf *ab) {
     abAppend(ab, E.statusmsg, msglen);
 }
 
+/**
+ * 设置状态栏信息
+ * @param fmt:const char* -> 传入字符串信息
+ */
 void EditorSetStatusMessage(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);

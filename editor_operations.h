@@ -1,6 +1,3 @@
-//
-// Created by 14825 on 2022/7/14.
-//
 
 #ifndef VANEDITOR_EDITOR_OPERATIONS_H
 #define VANEDITOR_EDITOR_OPERATIONS_H
@@ -9,6 +6,12 @@
 #include "row_operations.h"
 
 /*** editor operations ***/
+/** 编辑器相关操作 **/
+
+/**
+ * 插入字符
+ * @param c:int -> 字符对应的ASCII码
+ */
 void EditorInsertChar(int c) {
     if (E.cy == E.num_rows) {
         EditorInsertRow(E.num_rows, "", 0);
@@ -17,6 +20,9 @@ void EditorInsertChar(int c) {
     E.cx++;
 }
 
+/**
+ * 插入新行 
+ */
 void EditorInsertNewline() {
     if (E.cx == 0) {
         EditorInsertRow(E.cy, "", 0);
@@ -32,6 +38,9 @@ void EditorInsertNewline() {
     E.cx = 0;
 }
 
+/**
+ * 删除字符
+ */
 void EditorDelChar() {
     if (E.cy == E.num_rows) return;
     if (E.cx == 0 && E.cy == 0) return;
