@@ -26,55 +26,54 @@
 #define KILO_TAB_STOP 4
 #define KILO_QUIT_TIMES 3
 
-
 /*** data ***/
 typedef struct termios termios;
 
 enum EditorKey {    //特殊按键Index
-    BACKSPACE = 127,
-    ARROW_LEFT = 1000,
-    ARROW_RIGHT,
-    ARROW_UP,
-    ARROW_DOWN,
-    DEL_KEY,
-    HOME_KEY,
-    END_KEY,
-    PAGE_UP,
-    PAGE_DOWN
+  BACKSPACE = 127,
+  ARROW_LEFT = 1000,
+  ARROW_RIGHT,
+  ARROW_UP,
+  ARROW_DOWN,
+  DEL_KEY,
+  HOME_KEY,
+  END_KEY,
+  PAGE_UP,
+  PAGE_DOWN
 };
 
 typedef struct erow {
-    //行文本数据
-    int size;
-    char *chars;
+  //行文本数据
+  int size;
+  char *chars;
 
-    //渲染文本数据
-    int rsize;
-    char *render;
+  //渲染文本数据
+  int rsize;
+  char *render;
 } erow;
 
 typedef struct EditorConfig {
-    int cx, cy;  //光标位置
-    int rx;
-    int rowoff;
-    int coloff;
+  int cx, cy;  //光标位置
+  int rx;
+  int rowoff;
+  int coloff;
 
-    //窗口大小
-    int screen_rows;
-    int screen_cols;
+  //窗口大小
+  int screen_rows;
+  int screen_cols;
 
-    //文本数据
-    int num_rows;    //行数
-    erow *row;       //文本信息
-    char *file_name;  //文件名
+  //文本数据
+  int num_rows;    //行数
+  erow *row;       //文本信息
+  char *file_name;  //文件名
 
-    int dirty;
+  int dirty;
 
-    //状态栏数据
-    char statusmsg[80];
-    time_t statusmsg_time;
+  //状态栏数据
+  char statusmsg[80];
+  time_t statusmsg_time;
 
-    termios orig_termios;
+  termios orig_termios;
 } EditorConfig;
 
 //全局变量
@@ -85,5 +84,6 @@ void EditorSetStatusMessage(const char *fmt, ...);
 void EditorRefreshScreen();
 int EditorReadKey();
 char *EditorPrompt(char *prompt);
+void EditorInsertRow(int at, char *s, size_t len);
 
 #endif //VANEDITOR_VANEDITOR_H

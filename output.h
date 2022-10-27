@@ -11,6 +11,9 @@
 
 /** Editor **/
 
+void EditorDrawStatusBar(struct abuf *ab);
+void EditorDrawMessageBar(struct abuf *ab);
+
 /**
  * 绘制 ~ & 版本信息 & 文本数据
  */
